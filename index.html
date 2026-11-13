@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101410">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="4구 분리각">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="./icon-192.png">
 <title>4구 분리각 · 두께 계산</title>
 <style>
   :root {
@@ -156,8 +163,11 @@
     color: var(--danger);
     font-size: 13px;
   }
-  @media (max-width: 900px) {
-    main { grid-template-columns: 1fr; }
+  @media (max-width: 700px) {
+    header, main { padding-left: 12px; padding-right: 12px; }
+    h1 { font-size: 22px; }
+    .balls { grid-template-columns: 1fr; }
+    .ball-row { grid-template-columns: 72px 1fr 1fr; }
   }
 </style>
 </head>
@@ -812,6 +822,10 @@ document.getElementById("snap").addEventListener("change", (ev) => {
 });
 
 render();
+
+if (location.protocol.startsWith("http") && "serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js");
+}
 </script>
 </body>
 </html>
