@@ -164,7 +164,7 @@
 <body>
 <header>
   <h1>4구 분리각 · 두께 계산</h1>
-  <p>수구, 제1목적구, 제2목적구를 옮기면 점선 수구와 선분, 분리각이 다시 그려집니다. 점선 수구는 수구 중심이 제1목적구에 닿는 접점이고, 제2목적구가 있는 쪽 접선을 진행 방향으로 잡습니다. 한 선은 수구에서 그 접점을 지나 쿠션까지, 다른 선은 접점에서 제2목적구까지입니다. 분리각은 그 두 방향 사이의 각입니다. 두께는 이 각도로 고릅니다. 수구와 제1목적구 중심이 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다. 표에 없는 각도는 이웃한 두 두께의 사이로 표시합니다.</p>
+  <p>수구, 제1목적구, 제2목적구를 옮기면 점선 수구와 선분, 분리각이 다시 그려집니다. 점선 수구는 수구가 굴러가 제1목적구 면에 닿는 자리입니다. 한 선은 수구에서 그 자리를 지나 쿠션까지, 다른 선은 그 자리에서 제2목적구까지입니다. 분리각은 그 두 방향 사이의 각입니다. 두께는 이 각도로 고릅니다. 수구와 제1목적구 중심이 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다. 표에 없는 각도는 이웃한 두 두께의 사이로 표시합니다.</p>
   <div class="tips">
     <h3>* 두께 조절 팁 및 주의사항</h3>
     <ul>
@@ -191,7 +191,7 @@ const BALL_PX = 14;
 
 const PRESET = {
   basic: { cue: { x: 0.5, y: 1.5 }, b1: { x: 2, y: 1.5 }, b2: { x: 6, y: 1.5 } },
-  one: { cue: { x: 3, y: 2.5 }, b1: { x: 2, y: 1.5 }, b2: { x: 6, y: 1.5 } },
+  one: { cue: { x: 1.5, y: 2.5 }, b1: { x: 4.2, y: 2.5 }, b2: { x: 5.4, y: 1.1 } },
   s23: { cue: { x: 2, y: 3.5 }, b1: { x: 4, y: 0.5 }, b2: { x: 6, y: 2.5 } },
   line: { cue: { x: 1.5, y: 2 }, b1: { x: 3.5, y: 2 }, b2: { x: 7.5, y: 2 } }
 };
@@ -556,33 +556,21 @@ const NEAR_THICKNESS = {
 
 const BALL_D = 61.5 / 355;
 
-// 수구 중심의 진행선이 제1목적구에 닿는 점. 제2목적구와 같은 쪽 접선을 고른다.
-function tangentCue() {
-  const R = BALL_D;
+// 수구가 굴러가 제1목적구 면에 닿는 수구 중심. 그린 공의 면이 서로 맞닿게 둔다.
+function contactCue() {
+  const reach = (BALL_PX / (BED.w / 8)) * 2;
   const dx = state.cue.x - state.b1.x;
   const dy = state.cue.y - state.b1.y;
   const dist = Math.hypot(dx, dy);
-  if (dist <= R + 1e-4) return null;
-  const ang = Math.atan2(dy, dx);
-  const phi = Math.acos(Math.min(1, R / dist));
-  const vx = state.b1.x - state.cue.x;
-  const vy = state.b1.y - state.cue.y;
-  const target = vx * (state.b2.y - state.cue.y) - vy * (state.b2.x - state.cue.x);
-  if (Math.abs(target) < 1e-4) {
-    return { x: state.b1.x + dx / dist * R, y: state.b1.y + dy / dist * R };
-  }
-  let best = null;
-  for (const sign of [1, -1]) {
-    const th = ang + sign * phi;
-    const point = { x: state.b1.x + R * Math.cos(th), y: state.b1.y + R * Math.sin(th) };
-    const cross = vx * (point.y - state.cue.y) - vy * (point.x - state.cue.x);
-    if (target * cross > 0) best = point;
-  }
-  return best;
+  if (dist <= reach + 1e-4) return null;
+  return {
+    x: state.b1.x + (dx / dist) * reach,
+    y: state.b1.y + (dy / dist) * reach
+  };
 }
 
 function syncGhost() {
-  const touch = tangentCue();
+  const touch = contactCue();
   state.ghost = touch ? { x: touch.x, y: touch.y } : null;
 }
 
