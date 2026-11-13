@@ -32,12 +32,13 @@
   header .tips { max-width: 46rem; }
   main {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 18px;
     padding: 18px 24px 40px;
     align-items: start;
   }
   .stage {
+    max-width: 920px;
     background: #0c100c;
     border: 1px solid #2a3328;
     border-radius: 16px;
@@ -45,6 +46,7 @@
   }
   svg { width: 100%; height: auto; display: block; touch-action: none; user-select: none; }
   .panel {
+    max-width: 920px;
     background: var(--panel);
     border: 1px solid var(--panel-line);
     border-radius: 16px;
@@ -58,7 +60,7 @@
   }
   legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   fieldset label, .check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
-  .balls { display: grid; gap: 8px; margin-bottom: 12px; }
+  .balls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
   .ball-row {
     display: grid;
     grid-template-columns: 108px 1fr 1fr;
