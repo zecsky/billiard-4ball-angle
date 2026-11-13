@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>배치별 기울기</title>
+<style>
+  :root {
+    --bg: #101410;
+    --panel: #1a2118;
+    --panel-line: #313a2c;
+    --text: #f3efe4;
+    --muted: #b3aa98;
+    --gold: #f0c36a;
+    --felt-ink: #d7ecda;
+    --danger: #ffb4a8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 500px at 20% -10%, #243024 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    line-height: 1.45;
+  }
+  header, main { max-width: 1180px; margin: 0 auto; }
+  header { padding: 28px 24px 0; }
+  h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
+  header p { margin: 0; color: var(--muted); max-width: 46rem; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 18px;
+    padding: 18px 24px 40px;
+    align-items: start;
+  }
+  .stage {
+    background: #0c100c;
+    border: 1px solid #2a3328;
+    border-radius: 16px;
+    padding: 12px;
+  }
+  svg { width: 100%; height: auto; display: block; touch-action: none; user-select: none; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 16px;
+    padding: 16px;
+  }
+  fieldset {
+    margin: 0 0 12px;
+    padding: 10px 12px 8px;
+    border: 1px solid var(--panel-line);
+    border-radius: 10px;
+  }
+  legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
+  fieldset label, .check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
+  .balls { display: grid; gap: 8px; margin-bottom: 12px; }
+  .ball-row {
+    display: grid;
+    grid-template-columns: 108px 1fr 1fr;
+    gap: 6px;
+    align-items: center;
+    padding: 8px;
+    border-radius: 10px;
+    background: #141b13;
+    border: 1px solid transparent;
+  }
+  .ball-row.on { border-color: var(--gold); }
+  .ball-row span { font-size: 13px; }
+  .ball-row label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); }
+  input[type="number"] {
+    width: 100%;
+    background: #0e130e;
+    color: var(--text);
+    border: 1px solid #3a4436;
+    border-radius: 8px;
+    padding: 6px 8px;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+  .pair {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    align-items: center;
+    padding: 10px 0;
+    border-top: 1px solid var(--panel-line);
+  }
+  .who { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .num {
+    font-size: 34px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.04em;
+    color: var(--gold);
+  }
+  .unit { font-size: 13px; color: var(--muted); margin-left: 4px; }
+  .meta { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
+  .sums { display: grid; gap: 8px; margin-top: 4px; }
+  .sum {
+    background: #141b13;
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .sum b {
+    display: block;
+    font-size: 22px;
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+  .sum b.long { font-size: 18px; }
+  .tips {
+    margin-top: 12px;
+    padding: 12px;
+    background: #141b13;
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .tips h3 { margin: 0 0 6px; font-size: 14px; color: var(--text); font-weight: 700; }
+  .tips ul { margin: 0; padding-left: 18px; }
+  .tips li { margin: 4px 0; }
+  .sum small { color: var(--muted); }
+  .swatch {
+    width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.35);
+  }
+  .swatch.cue { background: #f4f0e6; }
+  .swatch.b1 { background: #e53935; }
+  .swatch.b2 { background: #8e1c1c; }
+  .rowbtns { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+  button {
+    background: #2a3426;
+    color: var(--text);
+    border: 1px solid #44513c;
+    border-radius: 999px;
+    padding: 7px 12px;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--gold); }
+  button.on { border-color: var(--gold); color: var(--gold); }
+  .hint, details { color: var(--muted); font-size: 13px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--text); }
+  .warn {
+    margin: 8px 0 0;
+    color: var(--danger);
+    font-size: 13px;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>배치별 기울기</h1>
+  <p>수구와 목적구 둘을 놓으면 점선 수구, 진행 선분, 분리각이 같이 그려집니다. 점선 수구는 수구가 제1목적구에 닿는 자리이고, 분리각은 그 진행 방향과 제2목적구로 가는 방향 사이의 각입니다. 두께는 그 각도로 고릅니다. 수구와 제1목적구 중심이 반 포인트(0.5칸) 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다.</p>
+</header>
+<main>
+  <div class="stage">
+    <svg id="table" viewBox="0 0 920 500" role="img" aria-label="당구대. 수구와 목적구를 옮기면 점선 수구, 선분, 각도가 다시 그려집니다."></svg>
+  </div>
+  <aside class="panel">
+    <label class="check"><input type="checkbox" id="snap"> 0.5칸 단위로 붙이기</label>
+    <div class="balls" id="ball-fields"></div>
+    <div id="readout" aria-live="polite"></div>
+  </aside>
+</main>
+<script>
+const BED = { x: 52, y: 36, w: 800, h: 400 };
+const RAIL = 24;
+const BALL_PX = 14;
+
+const PRESET = {
+  basic: { cue: { x: 0.5, y: 1.5 }, b1: { x: 2, y: 1.5 }, b2: { x: 6, y: 1.5 } },
+  one: { cue: { x: 3, y: 2.5 }, b1: { x: 2, y: 1.5 }, b2: { x: 6, y: 1.5 } },
+  s23: { cue: { x: 2, y: 3.5 }, b1: { x: 4, y: 0.5 }, b2: { x: 6, y: 2.5 } },
+  line: { cue: { x: 1.5, y: 2 }, b1: { x: 3.5, y: 2 }, b2: { x: 7.5, y: 2 } }
+};
+
+const state = {
+  cue: { ...PRESET.one.cue },
+  b1: { ...PRESET.one.b1 },
+  b2: { ...PRESET.one.b2 },
+  ghost: null,
+  axis: "long",
+  snap: false,
+  selected: "cue"
+};
+
+const svg = document.getElementById("table");
+const readout = document.getElementById("readout");
+const fields = document.getElementById("ball-fields");
+let drag = null;
+
+const BALLS = [
+  { id: "cue", name: "수구", mark: "수" },
+  { id: "b1", name: "제1목적구", mark: "1" },
+  { id: "b2", name: "제2목적구", mark: "2" }
+];
+
+fields.innerHTML = BALLS.map((b) => `
+  <div class="ball-row" data-id="${b.id}">
+    <span>${b.name}</span>
+    <label>장 0–8<input id="${b.id}-x" type="number" min="0" max="8" step="0.1"></label>
+    <label>단 0–4<input id="${b.id}-y" type="number" min="0" max="4" step="0.1"></label>
+  </div>
+`).join("");
+
+function fmt(n) {
+  const v = Math.round((n + Number.EPSILON) * 100) / 100;
+  return Object.is(v, -0) ? "0" : String(v);
+}
+
+function clamp(p) {
+  return {
+    x: Math.min(8, Math.max(0, p.x)),
+    y: Math.min(4, Math.max(0, p.y))
+  };
+}
+
+function place(p) {
+  const c = clamp(p);
+  if (!state.snap) return c;
+  return clamp({
+    x: Math.round(c.x * 2) / 2,
+    y: Math.round(c.y * 2) / 2
+  });
+}
+
+function toSvg(p) {
+  return {
+    x: BED.x + (p.x / 8) * BED.w,
+    y: BED.y + (1 - p.y / 4) * BED.h
+  };
+}
+
+function svgPoint(ev) {
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX;
+  pt.y = ev.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function fromSvg(sx, sy) {
+  return {
+    x: ((sx - BED.x) / BED.w) * 8,
+    y: (1 - (sy - BED.y) / BED.h) * 4
+  };
+}
+
+function hitTest(pt) {
+  let best = null;
+  let bestD = 22;
+  for (const b of BALLS) {
+    const s = toSvg(state[b.id]);
+    const d = Math.hypot(s.x - pt.x, s.y - pt.y);
+    if (d <= bestD) {
+      bestD = d;
+      best = b.id;
+    }
+  }
+  return best;
+}
+
+function gap(a, b) {
+  return { long: Math.abs(a.x - b.x), short: Math.abs(a.y - b.y) };
+}
+
+function slopeOf(pair) {
+  return state.axis === "long" ? pair.short : pair.long;
+}
+
+function paraOf(pair) {
+  return state.axis === "long" ? pair.long : pair.short;
+}
+
+function direction(from, to) {
+  if (state.axis === "long") {
+    const d = to.y - from.y;
+    if (Math.abs(d) < 0.005) return "장쿠션과 나란함";
+    return "제1보다 " + (d > 0 ? "상단 장쿠션 쪽 " : "하단 장쿠션 쪽 ") + fmt(Math.abs(d)) + "칸";
+  }
+  const d = to.x - from.x;
+  if (Math.abs(d) < 0.005) return "단쿠션과 나란함";
+  return "제1보다 " + (d > 0 ? "오른쪽 단쿠션 쪽 " : "왼쪽 단쿠션 쪽 ") + fmt(Math.abs(d)) + "칸";
+}
+
+function renderTable() {
+  const grid = [];
+  for (let i = 1; i <= 7; i++) {
+    const x = BED.x + (i / 8) * BED.w;
+    grid.push(`<line x1="${x}" y1="${BED.y}" x2="${x}" y2="${BED.y + BED.h}" stroke="#ffffff" stroke-opacity="0.13"/>`);
+  }
+  for (let j = 1; j <= 3; j++) {
+    const y = BED.y + (1 - j / 4) * BED.h;
+    grid.push(`<line x1="${BED.x}" y1="${y}" x2="${BED.x + BED.w}" y2="${y}" stroke="#ffffff" stroke-opacity="0.13"/>`);
+  }
+
+  const dots = [];
+  for (let i = 0; i <= 8; i++) {
+    const x = BED.x + (i / 8) * BED.w;
+    dots.push(dot(x, BED.y + BED.h + RAIL / 2));
+    dots.push(dot(x, BED.y - RAIL / 2));
+    dots.push(`<text x="${x}" y="${BED.y + BED.h + RAIL + 16}" text-anchor="middle" fill="#d9d0c0" font-size="12">${i}</text>`);
+  }
+  for (let j = 0; j <= 4; j++) {
+    const y = BED.y + (1 - j / 4) * BED.h;
+    if (j !== 0 && j !== 4) {
+      dots.push(dot(BED.x - RAIL / 2, y));
+      dots.push(dot(BED.x + BED.w + RAIL / 2, y));
+    }
+    dots.push(`<text x="${BED.x - RAIL - 8}" y="${y + 4}" text-anchor="end" fill="#d9d0c0" font-size="12">${j}</text>`);
+  }
+
+  const order = BALLS.map((b) => b.id).filter((id) => id !== state.selected);
+  if (BALLS.some((b) => b.id === state.selected)) order.push(state.selected);
+  const balls = order.map((id) => drawBall(id)).join("") + drawBall("ghost");
+
+  svg.innerHTML = `
+    <defs>
+      <radialGradient id="gCue" cx="35%" cy="32%" r="70%">
+        <stop offset="0" stop-color="#ffffff"/>
+        <stop offset="1" stop-color="#d5d0c6"/>
+      </radialGradient>
+      <radialGradient id="g1" cx="35%" cy="32%" r="70%">
+        <stop offset="0" stop-color="#ff8b8b"/>
+        <stop offset="1" stop-color="#c62828"/>
+      </radialGradient>
+      <radialGradient id="g2" cx="35%" cy="32%" r="70%">
+        <stop offset="0" stop-color="#e57373"/>
+        <stop offset="1" stop-color="#7f1d1d"/>
+      </radialGradient>
+      <filter id="sh" x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" flood-color="#000" flood-opacity="0.4"/>
+      </filter>
+    </defs>
+    <rect x="${BED.x - RAIL}" y="${BED.y - RAIL}" width="${BED.w + RAIL * 2}" height="${BED.h + RAIL * 2}" rx="8" fill="#6a3d22"/>
+    <rect x="${BED.x - 6}" y="${BED.y - 6}" width="${BED.w + 12}" height="${BED.h + 12}" rx="4" fill="#4a2a16"/>
+    <rect x="${BED.x}" y="${BED.y}" width="${BED.w}" height="${BED.h}" fill="#157a3a"/>
+    ${grid.join("")}
+    ${autoLines()}
+    ${dots.join("")}
+    ${balls}
+    ${separationMark()}
+  `;
+}
+
+function dot(x, y) {
+  return `<circle cx="${x}" cy="${y}" r="3.2" fill="#f7f4ee"/>`;
+}
+
+function boundaryHits(p, q) {
+  const dx = q.x - p.x;
+  const dy = q.y - p.y;
+  const raw = [];
+  function push(t, x, y) {
+    if (!Number.isFinite(t) || x < -1e-4 || x > 8 + 1e-4 || y < -1e-4 || y > 4 + 1e-4) return;
+    raw.push({ x: Math.min(8, Math.max(0, x)), y: Math.min(4, Math.max(0, y)), t: t });
+  }
+  if (Math.abs(dx) > 1e-9) {
+    let t = (0 - p.x) / dx;
+    push(t, 0, p.y + dy * t);
+    t = (8 - p.x) / dx;
+    push(t, 8, p.y + dy * t);
+  }
+  if (Math.abs(dy) > 1e-9) {
+    let t = (0 - p.y) / dy;
+    push(t, p.x + dx * t, 0);
+    t = (4 - p.y) / dy;
+    push(t, p.x + dx * t, 4);
+  }
+  const uniq = [];
+  raw.forEach((h) => {
+    if (!uniq.some((u) => Math.abs(u.x - h.x) < 1e-3 && Math.abs(u.y - h.y) < 1e-3)) uniq.push(h);
+  });
+  uniq.sort((a, b) => a.t - b.t);
+  if (uniq.length < 2) return uniq;
+  return [uniq[0], uniq[uniq.length - 1]];
+}
+
+function edgeNames(h) {
+  const names = [];
+  if (h.x < 1e-3) names.push("L");
+  if (h.x > 8 - 1e-3) names.push("R");
+  if (h.y < 1e-3) names.push("B");
+  if (h.y > 4 - 1e-3) names.push("T");
+  return names;
+}
+
+function cornerOf(h1, h2) {
+  const e1 = edgeNames(h1);
+  const e2 = edgeNames(h2);
+  const corners = [
+    { x: 0, y: 0, edges: ["L", "B"] },
+    { x: 0, y: 4, edges: ["L", "T"] },
+    { x: 8, y: 0, edges: ["R", "B"] },
+    { x: 8, y: 4, edges: ["R", "T"] }
+  ];
+  const found = corners.filter((c) => {
+    const hitOn = (names) => names.some((n) => c.edges.includes(n));
+    if (!hitOn(e1) || !hitOn(e2)) return false;
+    const used = c.edges.filter((n) => e1.includes(n) || e2.includes(n));
+    return used.length === 2;
+  });
+  return found.length === 1 ? found[0] : null;
+}
+
+function slopeTriangle(origin, other, color) {
+  const slope = state.axis === "long" ? Math.abs(other.y - origin.y) : Math.abs(other.x - origin.x);
+  const base = state.axis === "long" ? Math.abs(other.x - origin.x) : Math.abs(other.y - origin.y);
+  if (slope < 0.02 && base < 0.02) return "";
+  const hits = boundaryHits(origin, other);
+  if (hits.length < 2) return "";
+  const a = toSvg(hits[0]);
+  const b = toSvg(hits[1]);
+  let html = `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>`;
+  const corner = cornerOf(hits[0], hits[1]);
+  if (!corner) {
+    html += slopeTag(origin, other, color, slope);
+    return html;
+  }
+  const c = toSvg(corner);
+  html += `<polygon points="${a.x},${a.y} ${c.x},${c.y} ${b.x},${b.y}" fill="${color}" fill-opacity="0.16"/>`;
+  html += `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>`;
+  html += `<line x1="${b.x}" y1="${b.y}" x2="${c.x}" y2="${c.y}" stroke="${color}" stroke-width="3.5" stroke-linecap="round"/>`;
+  html += rightAngle(c, a, b, color);
+  html += railLabel(hits[0], corner, c, color);
+  html += railLabel(hits[1], corner, c, color);
+  html += slopeTag(origin, other, color, slope);
+  return html;
+}
+
+function railLabel(hit, corner, cornerSvg, color) {
+  const len = Math.abs(hit.x - corner.x) + Math.abs(hit.y - corner.y);
+  if (len < 0.35) return "";
+  const h = toSvg(hit);
+  const mx = (h.x + cornerSvg.x) / 2;
+  const my = (h.y + cornerSvg.y) / 2;
+  const horizontal = Math.abs(hit.y - corner.y) < 1e-3;
+  const lx = horizontal ? mx : mx + (corner.x < 4 ? 28 : -28);
+  const ly = horizontal ? my + (corner.y < 2 ? -12 : 18) : my + 4;
+  return `<text x="${lx}" y="${ly}" text-anchor="middle" fill="${color}" font-size="13" font-weight="700" stroke="#0e3a1c" stroke-width="3" paint-order="stroke">${fmt(len)}칸</text>`;
+}
+
+function slopeTag(origin, other, color, slope) {
+  if (slope < 0.02) return "";
+  const o = toSvg(origin);
+  const b = toSvg(other);
+  return `<text x="${(o.x + b.x) / 2 + 12}" y="${(o.y + b.y) / 2 - 8}" text-anchor="middle" fill="${color}" font-size="13" font-weight="700" stroke="#0e3a1c" stroke-width="3" paint-order="stroke">기울기 ${fmt(slope)}</text>`;
+}
+
+function rightAngle(foot, along, perp, color) {
+  const u = unit(foot, along);
+  const v = unit(foot, perp);
+  if (u.len < 22 || v.len < 22) return "";
+  const s = 11;
+  const p1 = [foot.x + u.x * s, foot.y + u.y * s];
+  const p2 = [p1[0] + v.x * s, p1[1] + v.y * s];
+  const p3 = [foot.x + v.x * s, foot.y + v.y * s];
+  return `<polyline points="${p1.join(",")} ${p2.join(",")} ${p3.join(",")}" fill="none" stroke="${color}" stroke-width="1.6"/>`;
+}
+
+function unit(from, to) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy) || 1;
+  return { x: dx / len, y: dy / len, len: Math.hypot(dx, dy) };
+}
+
+function drawBall(id) {
+  if (id === "ghost" && !state.ghost) return "";
+  const meta = BALLS.find((b) => b.id === id);
+  const p = toSvg(state[id]);
+  if (id === "ghost") {
+    const ring = state.selected === id
+      ? `<circle cx="${p.x}" cy="${p.y}" r="${BALL_PX + 5}" fill="none" stroke="#f0c36a" stroke-width="2"/>`
+      : "";
+    return `
+      ${ring}
+      <circle cx="${p.x}" cy="${p.y}" r="${BALL_PX}" fill="none" stroke="#ffffff" stroke-opacity="0.9" stroke-width="1.5" stroke-dasharray="4 3"/>
+    `;
+  }
+  const fill = id === "cue" ? "url(#gCue)" : id === "b1" ? "url(#g1)" : "url(#g2)";
+  const ink = id === "cue" ? "#2a2824" : "#fff8f6";
+  const ring = state.selected === id
+    ? `<circle cx="${p.x}" cy="${p.y}" r="${BALL_PX + 5}" fill="none" stroke="#f0c36a" stroke-width="2"/>`
+    : "";
+  return `
+    ${ring}
+    <g filter="url(#sh)">
+      <circle cx="${p.x}" cy="${p.y}" r="${BALL_PX}" fill="${fill}"/>
+      <text x="${p.x}" y="${p.y + 4}" text-anchor="middle" fill="${ink}" font-size="12" font-weight="700">${meta.mark}</text>
+    </g>
+  `;
+}
+
+function pairBlock(title, swatch, pair, from, to) {
+  return `
+    <div class="pair">
+      <div class="who">${swatch}${title}</div>
+      <div><span class="num">${fmt(slopeOf(pair))}</span><span class="unit">기울기</span></div>
+      <p class="meta">장 ${fmt(pair.long)}칸 · 단 ${fmt(pair.short)}칸<br>${direction(from, to)}</p>
+    </div>
+  `;
+}
+
+const FAR_THICKNESS = {
+  src: "정리 파일 1번(떨어졌을 때)",
+  rows: [
+    { lo: 15, hi: 15, value: "1/10", pct: "10.0%", label: "약 15.0°" },
+    { lo: 20, hi: 20, value: "1/8", pct: "12.5%", label: "약 20.0°" },
+    { lo: 30, hi: 30, value: "1/4", pct: "25.0%", label: "약 30.0°" },
+    { lo: 40, hi: 40, value: "1/3", pct: "33.3%", label: "약 40°" },
+    { lo: 42, hi: 42, value: "3/8", pct: "37.5%", label: "약 42°" },
+    { lo: 45, hi: 45, value: "1/2", pct: "50.0%", label: "약 45°" },
+    { lo: 50, hi: 52, value: "5/8", pct: "62.5%", label: "약 50 ~ 52°" },
+    { lo: 55, hi: 55, value: "2/3", pct: "66.7%", label: "약 55°" },
+    { lo: 60, hi: 63, value: "3/4", pct: "75.0%", label: "약 60 ~ 63°" },
+    { lo: 70, hi: 75, value: "7/8", pct: "87.5%", label: "약 70 ~ 75°" }
+  ]
+};
+const NEAR_THICKNESS = {
+  src: "정리 파일 2번(가까울 때)",
+  rows: [
+    { lo: 25.8, hi: 25.8, value: "1/10", pct: "10.0%", label: "약 25.8°" },
+    { lo: 29.0, hi: 29.0, value: "1/8", pct: "12.5%", label: "약 29.0°" },
+    { lo: 41.4, hi: 41.4, value: "1/4", pct: "25.0%", label: "약 41.4°" },
+    { lo: 48.2, hi: 48.2, value: "1/3", pct: "33.3%", label: "약 48.2°" },
+    { lo: 51.3, hi: 51.3, value: "3/8", pct: "37.5%", label: "약 51.3°" },
+    { lo: 60.0, hi: 60.0, value: "1/2", pct: "50.0%", label: "약 60.0°" },
+    { lo: 66.4, hi: 66.4, value: "5/8", pct: "62.5%", label: "약 66.4°" },
+    { lo: 70.5, hi: 70.5, value: "2/3", pct: "66.7%", label: "약 70.5°" },
+    { lo: 75.5, hi: 75.5, value: "3/4", pct: "75.0%", label: "약 75.5°" },
+    { lo: 82.8, hi: 82.8, value: "7/8", pct: "87.5%", label: "약 82.8°" }
+  ]
+};
+
+const BALL_D = 61.5 / 355;
+
+// 수구 중심의 진행선이 제1목적구에 닿는 점. 제2목적구와 같은 쪽 접선을 고른다.
+function tangentCue() {
+  const R = BALL_D;
+  const dx = state.cue.x - state.b1.x;
+  const dy = state.cue.y - state.b1.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist <= R + 1e-4) return null;
+  const ang = Math.atan2(dy, dx);
+  const phi = Math.acos(Math.min(1, R / dist));
+  const vx = state.b1.x - state.cue.x;
+  const vy = state.b1.y - state.cue.y;
+  const target = vx * (state.b2.y - state.cue.y) - vy * (state.b2.x - state.cue.x);
+  if (Math.abs(target) < 1e-4) {
+    return { x: state.b1.x + dx / dist * R, y: state.b1.y + dy / dist * R };
+  }
+  let best = null;
+  for (const sign of [1, -1]) {
+    const th = ang + sign * phi;
+    const point = { x: state.b1.x + R * Math.cos(th), y: state.b1.y + R * Math.sin(th) };
+    const cross = vx * (point.y - state.cue.y) - vy * (point.x - state.cue.x);
+    if (target * cross > 0) best = point;
+  }
+  return best;
+}
+
+function syncGhost() {
+  const touch = tangentCue();
+  state.ghost = touch ? { x: touch.x, y: touch.y } : null;
+}
+
+// 분리각: 수구 진행 방향과, 접촉 순간 수구 중심에서 제2목적구 중심을 잇는 선이 이루는 각.
+function separationAngle() {
+  if (!state.ghost) return null;
+  const vx = state.ghost.x - state.cue.x;
+  const vy = state.ghost.y - state.cue.y;
+  const wx = state.b2.x - state.ghost.x;
+  const wy = state.b2.y - state.ghost.y;
+  const lv = Math.hypot(vx, vy);
+  const lw = Math.hypot(wx, wy);
+  if (lv < 1e-6 || lw < 1e-6) return null;
+  const cos = Math.min(1, Math.max(-1, (vx * wx + vy * wy) / (lv * lw)));
+  return Math.acos(cos) * 180 / Math.PI;
+}
+
+// 표에 있는 각도(±0.5도)면 그 두께, 사이면 가까운 두 두께 사이라고 적는다.
+function thicknessFor(table, angle) {
+  const rows = table.rows;
+  const eps = 0.5;
+  const exact = rows.find((r) => angle >= r.lo - eps && angle <= r.hi + eps);
+  if (exact) {
+    return {
+      value: exact.value,
+      note: table.src + " 표: " + exact.label + " → " + exact.value + " 두께(" + exact.pct + ").",
+      rows: [exact]
+    };
+  }
+  let lo = null;
+  let hi = null;
+  for (const r of rows) {
+    if (r.hi < angle) lo = r;
+    if (r.lo > angle && !hi) hi = r;
+  }
+  if (!lo) {
+    return { value: rows[0].value + "보다 얇게", note: table.src + " 표의 가장 작은 각도 " + rows[0].label + "보다 작습니다.", rows: [rows[0]] };
+  }
+  if (!hi) {
+    const top = rows[rows.length - 1];
+    return { value: top.value + "보다 두껍게", note: table.src + " 표의 가장 큰 각도 " + top.label + "보다 큽니다.", rows: [top] };
+  }
+  return {
+    value: lo.value + "보다 두껍고 " + hi.value + "보다 얇게",
+    note: lo.label + " → " + lo.value + " (" + lo.pct + "), " + hi.label + " → " + hi.value + " (" + hi.pct + ") 사이입니다.",
+    rows: [lo, hi]
+  };
+}
+
+function fmtDeg(n) {
+  return String(Math.round(n * 10) / 10);
+}
+
+function svgDeg(dx, dy) {
+  return Math.atan2(-dy, dx) * 180 / Math.PI;
+}
+
+// from에서 through 방향으로 나아가 테이블 쿠션에 닿는 점(앞쪽).
+function rayEnd(from, through) {
+  const hits = boundaryHits(from, through).filter((h) => h.t > 1e-6);
+  if (!hits.length) return null;
+  return hits.reduce((a, b) => (a.t > b.t ? a : b));
+}
+
+function autoLines() {
+  if (!state.ghost) return "";
+  const end = rayEnd(state.cue, state.ghost);
+  if (!end) return "";
+  const a = toSvg(state.cue);
+  const g = toSvg(state.ghost);
+  const b = toSvg(state.b2);
+  const e = toSvg(end);
+  return `
+    <line x1="${a.x}" y1="${a.y}" x2="${e.x}" y2="${e.y}" stroke="#f0c36a" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="${e.x}" cy="${e.y}" r="4.5" fill="#f0c36a"/>
+    <line x1="${g.x}" y1="${g.y}" x2="${b.x}" y2="${b.y}" stroke="#f0c36a" stroke-width="2.4" stroke-linecap="round"/>
+  `;
+}
+
+function separationMark() {
+  const angle = separationAngle();
+  const g = state.ghost;
+  if (angle == null || angle < 1 || angle > 179) return "";
+  const cs = toSvg(g);
+  const start = svgDeg(g.x - state.cue.x, g.y - state.cue.y);
+  let delta = svgDeg(state.b2.x - g.x, state.b2.y - g.y) - start;
+  while (delta > 180) delta -= 360;
+  while (delta < -180) delta += 360;
+  const r = 34;
+  const at = (deg, radius) => ({
+    x: cs.x + Math.cos(deg * Math.PI / 180) * radius,
+    y: cs.y + Math.sin(deg * Math.PI / 180) * radius
+  });
+  const p1 = at(start, r);
+  const p2 = at(start + delta, r);
+  const half = Math.abs(delta) * Math.PI / 360;
+  const labelR = Math.min(72, Math.max(r + 16, 18 / Math.max(0.2, Math.sin(half))));
+  const mid = at(start + delta / 2, labelR);
+  const sweep = delta >= 0 ? 1 : 0;
+  const large = Math.abs(delta) > 180 ? 1 : 0;
+  return `
+    <path d="M ${p1.x} ${p1.y} A ${r} ${r} 0 ${large} ${sweep} ${p2.x} ${p2.y}" fill="none" stroke="#ffffff" stroke-width="2"/>
+    <text x="${mid.x}" y="${mid.y}" text-anchor="middle" fill="#ffffff" font-size="13" font-weight="700" stroke="#0e3a1c" stroke-width="3" paint-order="stroke">${fmtDeg(angle)}°</text>
+  `;
+}
+
+function renderReadout() {
+  const cuePair = gap(state.cue, state.b1);
+  const redPair = gap(state.b1, state.b2);
+  const angle = separationAngle();
+  const gapPoints = Math.hypot(state.cue.x - state.b1.x, state.cue.y - state.b1.y);
+  const close = gapPoints <= 0.5;
+  const hit = angle == null ? null : thicknessFor(close ? NEAR_THICKNESS : FAR_THICKNESS, angle);
+  const overlap = [
+    ["수구와 제1목적구", state.cue, state.b1],
+    ["제1목적구와 제2목적구", state.b1, state.b2],
+    ["수구와 제2목적구", state.cue, state.b2]
+  ].filter(([, a, b]) => Math.hypot(a.x - b.x, a.y - b.y) < 61.5 / 355);
+
+  readout.innerHTML = `
+    <div class="sums">
+      <div class="sum">
+        <span>${close ? "가까울 때" : "떨어져 있을 때"} · 두께</span>
+        <b${hit && hit.value.includes("보다") ? ' class="long"' : ""}>${hit ? hit.value : "—"}</b>
+        <small>${hit ? hit.note : ""}</small>
+      </div>
+    </div>
+    <div class="tips">
+      <h3>3. 두께 조절 팁 및 주의사항</h3>
+      <ul>
+        <li>밀림 현상 주의: 무회전으로 치더라도 밀어치기 등에 의해 두꺼운 두께(예: 1/2 두께)에서 오히려 각도가 더 작아질 수 있습니다 [03:56].</li>
+        <li>끌어치기 활용: 60도~70도의 큰 분리각을 만들 때는 역회전 당점을 활용하거나 두께와 스트로크 조절을 통해 밀림 현상을 보완해야 합니다 [04:12].</li>
+        <li>미세 조정: 원하는 각도가 애매할 때는 당점을 약간 위로 주거나 스트로크의 세기를 조절하여 보완하는 요령을 함께 설명하고 있습니다 [07:02].</li>
+      </ul>
+    </div>
+    ${overlap.length ? `<p class="warn">${overlap.map((x) => x[0]).join(", ")}이 겹칩니다. 공 지름은 61.5mm로 두었습니다.</p>` : ""}
+  `;
+
+  for (const b of BALLS) {
+    const row = fields.querySelector(`[data-id="${b.id}"]`);
+    row.classList.toggle("on", state.selected === b.id);
+    const x = document.getElementById(b.id + "-x");
+    const y = document.getElementById(b.id + "-y");
+    if (document.activeElement !== x) x.value = fmt(state[b.id].x);
+    if (document.activeElement !== y) y.value = fmt(state[b.id].y);
+  }
+}
+
+function render() {
+  syncGhost();
+  renderTable();
+  renderReadout();
+}
+
+svg.addEventListener("pointerdown", (ev) => {
+  const pt = svgPoint(ev);
+  const hit = hitTest(pt);
+  if (!hit) return;
+  ev.preventDefault();
+  state.selected = hit;
+  drag = hit;
+  svg.setPointerCapture(ev.pointerId);
+  render();
+});
+
+svg.addEventListener("pointermove", (ev) => {
+  const pt = svgPoint(ev);
+  if (!drag) {
+    svg.style.cursor = hitTest(pt) ? "grab" : "default";
+    return;
+  }
+  svg.style.cursor = "grabbing";
+  state[drag] = place(fromSvg(pt.x, pt.y));
+  render();
+});
+
+function endDrag(ev) {
+  if (!drag) return;
+  drag = null;
+  svg.style.cursor = hitTest(svgPoint(ev)) ? "grab" : "default";
+}
+
+svg.addEventListener("pointerup", endDrag);
+svg.addEventListener("pointercancel", endDrag);
+
+window.addEventListener("keydown", (ev) => {
+  if (ev.target.closest("input, textarea")) return;
+  const step = ev.shiftKey || state.snap ? 0.5 : 0.1;
+  const move = {
+    ArrowLeft: [-step, 0],
+    ArrowRight: [step, 0],
+    ArrowUp: [0, step],
+    ArrowDown: [0, -step]
+  }[ev.key];
+  if (!move) return;
+  const b = state[state.selected];
+  if (!b || b.x == null) return;
+  ev.preventDefault();
+  state[state.selected] = place({ x: b.x + move[0], y: b.y + move[1] });
+  render();
+});
+
+fields.addEventListener("input", (ev) => {
+  const input = ev.target;
+  if (!input.id) return;
+  const n = Number(input.value);
+  if (!Number.isFinite(n)) return;
+  const id = input.id.slice(0, input.id.lastIndexOf("-"));
+  const key = input.id.endsWith("-x") ? "x" : "y";
+  const next = { ...state[id], [key]: n };
+  state[id] = place(next);
+  state.selected = id;
+  render();
+});
+
+fields.addEventListener("focusout", () => {
+  renderReadout();
+});
+
+fields.addEventListener("focusin", (ev) => {
+  const row = ev.target.closest(".ball-row");
+  if (!row) return;
+  state.selected = row.dataset.id;
+  renderTable();
+  for (const b of BALLS) {
+    fields.querySelector(`[data-id="${b.id}"]`).classList.toggle("on", state.selected === b.id);
+  }
+});
+
+document.querySelectorAll('input[name="axis"]').forEach((el) => {
+  el.addEventListener("change", () => {
+    if (el.checked) {
+      state.axis = el.value;
+      render();
+    }
+  });
+});
+
+document.getElementById("snap").addEventListener("change", (ev) => {
+  state.snap = ev.target.checked;
+  if (state.snap) {
+    state.cue = place(state.cue);
+    state.b1 = place(state.b1);
+    state.b2 = place(state.b2);
+  }
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
