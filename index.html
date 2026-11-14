@@ -67,30 +67,6 @@
   }
   legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
   fieldset label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
-  .balls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-  .ball-row {
-    display: grid;
-    grid-template-columns: 108px 1fr 1fr;
-    gap: 6px;
-    align-items: center;
-    padding: 8px;
-    border-radius: 10px;
-    background: #141b13;
-    border: 1px solid transparent;
-  }
-  .ball-row.on { border-color: var(--gold); }
-  .ball-row span { font-size: 13px; }
-  .ball-row label { display: grid; gap: 2px; font-size: 11px; color: var(--muted); }
-  input[type="number"] {
-    width: 100%;
-    background: #0e130e;
-    color: var(--text);
-    border: 1px solid #3a4436;
-    border-radius: 8px;
-    padding: 6px 8px;
-    font: inherit;
-    font-variant-numeric: tabular-nums;
-  }
   .pair {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -111,23 +87,21 @@
   .meta { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
   .sums { display: grid; gap: 8px; margin-top: 4px; }
   .sum {
-    display: grid;
-    grid-template-columns: minmax(180px, 1fr) minmax(280px, 520px);
-    gap: 8px 18px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     background: #141b13;
     border-radius: 10px;
-    padding: 10px 12px;
+    padding: 12px 12px 8px;
   }
-  .sum b {
-    display: block;
+  .hit-label {
+    margin: 0 0 4px;
     font-size: 22px;
+    font-weight: 700;
     line-height: 1.35;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.03em;
+    text-align: center;
   }
-  .sum b.long { font-size: 18px; }
-  .hit-fig { width: 100%; height: auto; display: block; }
+  .hit-fig { width: min(520px, 100%); height: auto; display: block; }
   .tips {
     margin-top: 12px;
     padding: 12px;
@@ -171,9 +145,6 @@
   @media (max-width: 700px) {
     header, main { padding-left: 12px; padding-right: 12px; }
     h1 { font-size: 22px; }
-    .balls { grid-template-columns: 1fr; }
-    .ball-row { grid-template-columns: 72px 1fr 1fr; }
-    .sum { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -196,7 +167,6 @@
   </div>
   <aside class="panel">
     <div id="readout" aria-live="polite"></div>
-    <div class="balls" id="ball-fields"></div>
   </aside>
 </main>
 <script>
@@ -222,7 +192,6 @@ const state = {
 
 const svg = document.getElementById("table");
 const readout = document.getElementById("readout");
-const fields = document.getElementById("ball-fields");
 let drag = null;
 
 const BALLS = [
@@ -230,14 +199,6 @@ const BALLS = [
   { id: "b1", name: "제1목적구", mark: "1" },
   { id: "b2", name: "제2목적구", mark: "2" }
 ];
-
-fields.innerHTML = BALLS.map((b) => `
-  <div class="ball-row" data-id="${b.id}">
-    <span>${b.name}</span>
-    <label>장 0–8<input id="${b.id}-x" type="number" min="0" max="8" step="0.1"></label>
-    <label>단 0–4<input id="${b.id}-y" type="number" min="0" max="4" step="0.1"></label>
-  </div>
-`).join("");
 
 function fmt(n) {
   const v = Math.round((n + Number.EPSILON) * 100) / 100;
@@ -775,21 +736,29 @@ function thicknessFigure(frac, side) {
   }
   const edge = cx + (right ? 1 : -1) * R * (1 - 2 * frac);
   const cueCx = edge + (right ? R : -R);
-  const markX = right ? ((cx - R) + edge) / 2 : (edge + (cx + R)) / 2;
   const sideLabel = right ? "오른쪽 면" : "왼쪽 면";
   const pad = 18;
-  const left = Math.min(cx, cueCx) - R - pad;
-  const rightEdge = Math.max(cx, cueCx) + R + pad;
+  const tenthCue = cx + (right ? 1 : -1) * 2 * R * (1 - 0.1);
+  const span = Math.abs(tenthCue - cx) + R * 2 + pad * 2;
+  const pairMid = (Math.min(cx, cueCx) + Math.max(cx, cueCx)) / 2;
+  const left = pairMid - span / 2;
   return `
-    <svg class="hit-fig" viewBox="${left} 0 ${rightEdge - left} 312" role="img" aria-hidden="true" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif">
+    <svg class="hit-fig" viewBox="${left} 0 ${span} 312" role="img" aria-hidden="true" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif">
       <circle cx="${cx}" cy="${cy}" r="${R}" fill="#e53935" stroke="#ffb4a8" stroke-width="1.5"/>
       ${lines}
-      <text x="${markX}" y="${cy + 6}" text-anchor="middle" fill="#fff8f6" font-size="20" font-weight="700">1</text>
       <circle cx="${cueCx}" cy="${cy}" r="${R}" fill="#f7f4ee" stroke="#8ec5ff" stroke-width="2.5"/>
       <text x="${cueCx}" y="${cy + 6}" text-anchor="middle" fill="#2a2824" font-size="20" font-weight="700">수</text>
-      <text x="${cx}" y="302" text-anchor="middle" fill="#b3aa98" font-size="14">${sideLabel}</text>
+      <text x="${pairMid}" y="302" text-anchor="middle" fill="#b3aa98" font-size="14">${sideLabel}</text>
     </svg>
   `;
+}
+
+function thicknessCaption(hit) {
+  if (!hit) return "두께: —";
+  if (hit.rows.length === 2) return "두께: " + hit.rows[0].value + " ~ " + hit.rows[1].value + " 두께";
+  if (hit.value.includes("얇게")) return "두께: " + hit.rows[0].value + " 두께보다 얇게";
+  if (hit.value.includes("두껍게")) return "두께: " + hit.rows[0].value + " 두께보다 두껍게";
+  return "두께: " + hit.value + " 두께";
 }
 
 function renderReadout() {
@@ -807,29 +776,15 @@ function renderReadout() {
 
   const side = hitSide();
   const frac = thicknessFrac(hit);
-  const sideName = side === "right" ? "오른쪽 면" : side === "left" ? "왼쪽 면" : "";
   readout.innerHTML = `
     <div class="sums">
       <div class="sum">
-        <div class="copy">
-          <span>${close ? "가까울 때" : "떨어져 있을 때"}${sideName ? " · " + sideName : ""} · 두께</span>
-          <b${hit && hit.value.includes("보다") ? ' class="long"' : ""}>${hit ? hit.value : "—"}</b>
-          <small>${hit ? hit.note : ""}</small>
-        </div>
+        <p class="hit-label">${thicknessCaption(hit)}</p>
         ${thicknessFigure(frac, side)}
       </div>
     </div>
     ${overlap.length ? `<p class="warn">${overlap.map((x) => x[0]).join(", ")}이 겹칩니다. 공 지름은 61.5mm로 두었습니다.</p>` : ""}
   `;
-
-  for (const b of BALLS) {
-    const row = fields.querySelector(`[data-id="${b.id}"]`);
-    row.classList.toggle("on", state.selected === b.id);
-    const x = document.getElementById(b.id + "-x");
-    const y = document.getElementById(b.id + "-y");
-    if (document.activeElement !== x) x.value = fmt(state[b.id].x);
-    if (document.activeElement !== y) y.value = fmt(state[b.id].y);
-  }
 }
 
 function render() {
@@ -884,33 +839,6 @@ window.addEventListener("keydown", (ev) => {
   ev.preventDefault();
   state[state.selected] = place({ x: b.x + move[0], y: b.y + move[1] });
   render();
-});
-
-fields.addEventListener("input", (ev) => {
-  const input = ev.target;
-  if (!input.id) return;
-  const n = Number(input.value);
-  if (!Number.isFinite(n)) return;
-  const id = input.id.slice(0, input.id.lastIndexOf("-"));
-  const key = input.id.endsWith("-x") ? "x" : "y";
-  const next = { ...state[id], [key]: n };
-  state[id] = place(next);
-  state.selected = id;
-  render();
-});
-
-fields.addEventListener("focusout", () => {
-  renderReadout();
-});
-
-fields.addEventListener("focusin", (ev) => {
-  const row = ev.target.closest(".ball-row");
-  if (!row) return;
-  state.selected = row.dataset.id;
-  renderTable();
-  for (const b of BALLS) {
-    fields.querySelector(`[data-id="${b.id}"]`).classList.toggle("on", state.selected === b.id);
-  }
 });
 
 document.querySelectorAll('input[name="axis"]').forEach((el) => {
