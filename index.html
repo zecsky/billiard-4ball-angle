@@ -36,7 +36,6 @@
   header { padding: 28px 24px 0; }
   h1 { margin: 0 0 6px; font-size: 28px; font-weight: 700; letter-spacing: -0.03em; }
   header p { margin: 0; color: var(--muted); max-width: 46rem; }
-  header .tips { max-width: 46rem; }
   main {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -151,15 +150,6 @@
 <body>
 <header>
   <h1>4구 분리각 · 두께 계산</h1>
-  <p>수구, 제1목적구, 제2목적구를 옮기면 점선 수구와 선분, 분리각이 다시 그려집니다. 점선 수구는 수구가 1/2 두께로 제1목적구에 맞을 때의 수구 중심입니다. 진행 선은 제1목적구 중심에서 공 반지름만큼 비껴 가고, 제1목적구는 그 선의 바깥에 맞닿아 있습니다. 한 선은 수구에서 그 자리를 지나 쿠션까지, 다른 선은 그 자리에서 제2목적구까지입니다. 분리각은 그 두 방향 사이의 각입니다. 두께는 이 각도로 고릅니다. 수구와 제1목적구 중심이 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다. 표에 없는 각도는 이웃한 두 두께의 사이로 표시합니다.</p>
-  <div class="tips">
-    <h3>* 두께 조절 팁 및 주의사항</h3>
-    <ul>
-      <li>밀림 현상 주의: 무회전으로 치더라도 밀어치기 등에 의해 두꺼운 두께(예: 1/2 두께)에서 오히려 각도가 더 작아질 수 있습니다.</li>
-      <li>끌어치기 활용: 60도~70도의 큰 분리각을 만들 때는 역회전 당점을 활용하거나 두께와 스트로크 조절을 통해 밀림 현상을 보완해야 합니다.</li>
-      <li>미세 조정: 원하는 각도가 애매할 때는 당점을 약간 위로 주거나 스트로크의 세기를 조절하여 보완하는 요령을 함께 설명하고 있습니다.</li>
-    </ul>
-  </div>
 </header>
 <main>
   <div class="stage">
@@ -167,6 +157,23 @@
   </div>
   <aside class="panel">
     <div id="readout" aria-live="polite"></div>
+    <div class="tips">
+      <h3>사용법</h3>
+      <ul>
+        <li>당구대에서 수구, 제1목적구, 제2목적구를 끌어 배치합니다. 공을 누른 뒤 방향키로도 옮길 수 있고, Shift를 누르면 0.5칸씩 움직입니다.</li>
+        <li>점선 수구와 노란 선, 분리각이 다시 그려집니다. 수구와 제1목적구가 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다.</li>
+        <li>위 그림은 그 분리각에 맞는 두께와, 제1목적구의 왼쪽 면 또는 오른쪽 면을 보여 줍니다. 흰 공의 점은 중앙 당점입니다. 분리각이 60도에서 90도이고 두 공이 0.5칸보다 멀면 반 팁 아래입니다.</li>
+      </ul>
+    </div>
+    <div class="tips">
+      <h3>* 두께 조절 팁 및 주의사항</h3>
+      <ul>
+        <li>1/10 두께보다 얇거나 7/8 두께보다 두꺼울 때는 지원하지 않습니다.</li>
+        <li>밀림 현상 주의: 무회전으로 치더라도 밀어치기 등에 의해 두꺼운 두께(예: 1/2 두께)에서 오히려 각도가 더 작아질 수 있습니다.</li>
+        <li>끌어치기 활용: 60도~70도의 큰 분리각을 만들 때는 역회전 당점을 활용하거나 두께와 스트로크 조절을 통해 밀림 현상을 보완해야 합니다.</li>
+        <li>미세 조정: 원하는 각도가 애매할 때는 당점을 약간 위로 주거나 스트로크의 세기를 조절하여 보완하는 요령을 함께 설명하고 있습니다.</li>
+      </ul>
+    </div>
   </aside>
 </main>
 <script>
@@ -705,7 +712,7 @@ function hitSide() {
   return side > 0 ? "right" : "left";
 }
 
-function thicknessFigure(frac, side) {
+function thicknessFigure(frac, side, angle, close) {
   if (frac == null || !side) return "";
   const R = 78;
   const cx = 250;
@@ -737,6 +744,8 @@ function thicknessFigure(frac, side) {
   const edge = cx + (right ? 1 : -1) * R * (1 - 2 * frac);
   const cueCx = edge + (right ? R : -R);
   const sideLabel = right ? "오른쪽 면" : "왼쪽 면";
+  const tipR = R * (12 / 65.5);
+  const tipY = cy + (!close && angle != null && angle >= 60 && angle <= 90 ? tipR : 0);
   const pad = 18;
   const tenthCue = cx + (right ? 1 : -1) * 2 * R * (1 - 0.1);
   const span = Math.abs(tenthCue - cx) + R * 2 + pad * 2;
@@ -747,17 +756,29 @@ function thicknessFigure(frac, side) {
       <circle cx="${cx}" cy="${cy}" r="${R}" fill="#e53935" stroke="#ffb4a8" stroke-width="1.5"/>
       ${lines}
       <circle cx="${cueCx}" cy="${cy}" r="${R}" fill="#f7f4ee" stroke="#8ec5ff" stroke-width="2.5"/>
-      <circle cx="${cueCx}" cy="${cy}" r="5" fill="#2a2824"/>
+      <line x1="${cueCx - R}" y1="${cy}" x2="${cueCx + R}" y2="${cy}" stroke="#6d675f" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <line x1="${cueCx}" y1="${cy - R}" x2="${cueCx}" y2="${cy + R}" stroke="#6d675f" stroke-width="1.4" stroke-dasharray="4 3"/>
+      <circle cx="${cueCx}" cy="${tipY}" r="${tipR}" fill="#2a2824"/>
       <text x="${pairMid}" y="302" text-anchor="middle" fill="#b3aa98" font-size="14">${sideLabel}</text>
     </svg>
   `;
 }
 
+function thicknessInRange(hit) {
+  if (!hit) return false;
+  if (hit.rows.length !== 1) return true;
+  return !hit.value.includes("보다");
+}
+
+function thicknessOutOfRange(hit) {
+  return !!hit && hit.rows.length === 1 && hit.value.includes("보다");
+}
+
+let lastThicknessFigure = "";
+
 function thicknessCaption(hit) {
   if (!hit) return "두께: —";
   if (hit.rows.length === 2) return "두께: " + hit.rows[0].value + " ~ " + hit.rows[1].value + " 두께";
-  if (hit.value.includes("얇게")) return "두께: " + hit.rows[0].value + " 두께보다 얇게";
-  if (hit.value.includes("두껍게")) return "두께: " + hit.rows[0].value + " 두께보다 두껍게";
   return "두께: " + hit.value + " 두께";
 }
 
@@ -776,13 +797,17 @@ function renderReadout() {
 
   const side = hitSide();
   const frac = thicknessFrac(hit);
+  const inRange = thicknessInRange(hit);
+  const outOfRange = thicknessOutOfRange(hit);
+  if (inRange) lastThicknessFigure = thicknessFigure(frac, side, angle, close);
+  const caption = outOfRange ? "두께: 지원 안함" : thicknessCaption(hit);
   readout.innerHTML = `
-    <div class="sums">
+    ${inRange || outOfRange ? `<div class="sums">
       <div class="sum">
-        <p class="hit-label">${thicknessCaption(hit)}</p>
-        ${thicknessFigure(frac, side)}
+        <p class="hit-label">${caption}</p>
+        ${lastThicknessFigure}
       </div>
-    </div>
+    </div>` : ""}
     ${overlap.length ? `<p class="warn">${overlap.map((x) => x[0]).join(", ")}이 겹칩니다. 공 지름은 61.5mm로 두었습니다.</p>` : ""}
   `;
 }
