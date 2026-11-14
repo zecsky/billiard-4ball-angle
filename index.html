@@ -174,7 +174,7 @@
 <body>
 <header>
   <h1>4구 분리각 · 두께 계산</h1>
-  <p>수구, 제1목적구, 제2목적구를 옮기면 점선 수구와 선분, 분리각이 다시 그려집니다. 점선 수구는 수구가 굴러가 제1목적구 면에 닿는 자리입니다. 한 선은 수구에서 그 자리를 지나 쿠션까지, 다른 선은 그 자리에서 제2목적구까지입니다. 분리각은 그 두 방향 사이의 각입니다. 두께는 이 각도로 고릅니다. 수구와 제1목적구 중심이 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다. 표에 없는 각도는 이웃한 두 두께의 사이로 표시합니다.</p>
+  <p>수구, 제1목적구, 제2목적구를 옮기면 점선 수구와 선분, 분리각이 다시 그려집니다. 점선 수구는 수구가 1/2 두께로 제1목적구에 맞을 때의 수구 중심입니다. 진행 선은 제1목적구 중심에서 공 반지름만큼 비껴 가고, 제1목적구는 그 선의 바깥에 맞닿아 있습니다. 한 선은 수구에서 그 자리를 지나 쿠션까지, 다른 선은 그 자리에서 제2목적구까지입니다. 분리각은 그 두 방향 사이의 각입니다. 두께는 이 각도로 고릅니다. 수구와 제1목적구 중심이 0.5칸 이하면 가까운 표, 그보다 멀면 떨어진 표를 씁니다. 표에 없는 각도는 이웃한 두 두께의 사이로 표시합니다.</p>
   <div class="tips">
     <h3>* 두께 조절 팁 및 주의사항</h3>
     <ul>
@@ -566,17 +566,47 @@ const NEAR_THICKNESS = {
 
 const BALL_D = 61.5 / 355;
 
-// 수구가 굴러가 제1목적구 면에 닿는 수구 중심. 그린 공의 면이 서로 맞닿게 둔다.
+// 1/2 두께 접촉. 진행 선은 수구를 지나며 제1목적구 중심에서 반지름만큼 비껴 간다.
+// 점선 수구는 그 선 위에서 두 공의 면이 맞닿는 수구 중심이다.
+// 제1목적구와 제2목적구가 진행 선의 서로 다른 쪽에 오도록 고른다.
 function contactCue() {
-  const reach = (BALL_PX / (BED.w / 8)) * 2;
-  const dx = state.cue.x - state.b1.x;
-  const dy = state.cue.y - state.b1.y;
+  const radius = BALL_PX / (BED.w / 8);
+  const reach = radius * 2;
+  const cue = state.cue;
+  const ball = state.b1;
+  const target = state.b2;
+  const dx = ball.x - cue.x;
+  const dy = ball.y - cue.y;
   const dist = Math.hypot(dx, dy);
-  if (dist <= reach + 1e-4) return null;
-  return {
-    x: state.b1.x + (dx / dist) * reach,
-    y: state.b1.y + (dy / dist) * reach
-  };
+  if (dist <= radius + 1e-6) return null;
+  const base = Math.atan2(dy, dx);
+  const alpha = Math.asin(Math.min(1, radius / dist));
+  const candidates = [];
+  for (const sign of [1, -1]) {
+    const ux = Math.cos(base + sign * alpha);
+    const uy = Math.sin(base + sign * alpha);
+    const along = dx * ux + dy * uy;
+    const disc = along * along - (dist * dist - reach * reach);
+    if (disc < 0) continue;
+    const root = Math.sqrt(disc);
+    const steps = [along - root, along + root].filter((t) => t > 1e-4).sort((a, b) => a - b);
+    if (!steps.length) continue;
+    const ghost = { x: cue.x + ux * steps[0], y: cue.y + uy * steps[0] };
+    const sideOf = (p) => ux * (p.y - ghost.y) - uy * (p.x - ghost.x);
+    const wx = target.x - ghost.x;
+    const wy = target.y - ghost.y;
+    const span = Math.hypot(wx, wy);
+    const cos = span < 1e-6 ? 1 : Math.min(1, Math.max(-1, (ux * wx + uy * wy) / span));
+    candidates.push({
+      ghost,
+      opposite: sideOf(ball) * sideOf(target) < 0,
+      angle: Math.acos(cos)
+    });
+  }
+  const separated = candidates.filter((c) => c.opposite);
+  const pool = separated.length ? separated : candidates;
+  pool.sort((a, b) => a.angle - b.angle);
+  return pool.length ? pool[0].ghost : null;
 }
 
 function syncGhost() {
