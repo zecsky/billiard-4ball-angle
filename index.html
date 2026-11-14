@@ -66,8 +66,8 @@
     border-radius: 10px;
   }
   legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
-  fieldset label, .check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
-  .balls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  fieldset label { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; font-size: 14px; }
+  .balls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
   .ball-row {
     display: grid;
     grid-template-columns: 108px 1fr 1fr;
@@ -111,6 +111,10 @@
   .meta { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 13px; }
   .sums { display: grid; gap: 8px; margin-top: 4px; }
   .sum {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(280px, 520px);
+    gap: 8px 18px;
+    align-items: center;
     background: #141b13;
     border-radius: 10px;
     padding: 10px 12px;
@@ -123,6 +127,7 @@
     letter-spacing: -0.03em;
   }
   .sum b.long { font-size: 18px; }
+  .hit-fig { width: 100%; height: auto; display: block; }
   .tips {
     margin-top: 12px;
     padding: 12px;
@@ -168,6 +173,7 @@
     h1 { font-size: 22px; }
     .balls { grid-template-columns: 1fr; }
     .ball-row { grid-template-columns: 72px 1fr 1fr; }
+    .sum { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -189,9 +195,8 @@
     <svg id="table" viewBox="0 0 920 500" role="img" aria-label="당구대. 수구와 목적구를 옮기면 점선 수구, 선분, 각도가 다시 그려집니다."></svg>
   </div>
   <aside class="panel">
-    <label class="check"><input type="checkbox" id="snap"> 0.5칸 단위로 붙이기</label>
-    <div class="balls" id="ball-fields"></div>
     <div id="readout" aria-live="polite"></div>
+    <div class="balls" id="ball-fields"></div>
   </aside>
 </main>
 <script>
@@ -212,7 +217,6 @@ const state = {
   b2: { ...PRESET.one.b2 },
   ghost: null,
   axis: "long",
-  snap: false,
   selected: "cue"
 };
 
@@ -248,12 +252,7 @@ function clamp(p) {
 }
 
 function place(p) {
-  const c = clamp(p);
-  if (!state.snap) return c;
-  return clamp({
-    x: Math.round(c.x * 2) / 2,
-    y: Math.round(c.y * 2) / 2
-  });
+  return clamp(p);
 }
 
 function toSvg(p) {
@@ -717,6 +716,82 @@ function separationMark() {
   `;
 }
 
+function rowFrac(row) {
+  const parts = row.value.split("/");
+  return Number(parts[0]) / Number(parts[1]);
+}
+
+function thicknessFrac(hit) {
+  if (!hit || !hit.rows.length) return null;
+  const a = rowFrac(hit.rows[0]);
+  if (hit.rows.length === 1) {
+    if (hit.value.includes("얇게")) return Math.max(0.04, a * 0.55);
+    if (hit.value.includes("두껍게")) return Math.min(0.96, a + (1 - a) * 0.45);
+    return a;
+  }
+  return (a + rowFrac(hit.rows[1])) / 2;
+}
+
+// 수구에서 제1목적구를 볼 때, 점선 수구가 있는 쪽이 맞는 면이다.
+function hitSide() {
+  if (!state.ghost) return null;
+  const dx = state.b1.x - state.cue.x;
+  const dy = state.b1.y - state.cue.y;
+  const gx = state.ghost.x - state.b1.x;
+  const gy = state.ghost.y - state.b1.y;
+  const side = gx * dy - gy * dx;
+  if (Math.abs(side) < 1e-6) return null;
+  return side > 0 ? "right" : "left";
+}
+
+function thicknessFigure(frac, side) {
+  if (frac == null || !side) return "";
+  const R = 78;
+  const cx = 250;
+  const cy = 148;
+  const right = side === "right";
+  const names = right
+    ? ["7/8", "3/4", "5/8", "1/2", "3/8", "1/4", "1/8"]
+    : ["1/8", "1/4", "3/8", "1/2", "5/8", "3/4", "7/8"];
+  const labelY = {
+    "7/8": cy - R - 36,
+    "1/2": cy - R - 36,
+    "1/8": cy - R - 36,
+    "3/4": cy - R - 16,
+    "1/4": cy - R - 16,
+    "5/8": cy + R + 20,
+    "3/8": cy + R + 46
+  };
+  let lines = "";
+  for (let i = 1; i <= 7; i++) {
+    const x = cx - R + i * (R / 4);
+    const dx = x - cx;
+    const dy = Math.sqrt(Math.max(0, R * R - dx * dx));
+    const name = names[i - 1];
+    const on = Math.abs(Number(name.split("/")[0]) / Number(name.split("/")[1]) - frac) < 0.02;
+    const color = on ? "#f0c36a" : "#f7f4ee";
+    lines += `<line x1="${x}" y1="${cy - dy}" x2="${x}" y2="${cy + dy}" stroke="${color}" stroke-width="${on ? 2 : 1.2}" stroke-dasharray="3 2.4"/>`;
+    lines += `<text x="${x}" y="${labelY[name]}" text-anchor="middle" fill="${color}" font-size="13" font-weight="700">${name}</text>`;
+  }
+  const edge = cx + (right ? 1 : -1) * R * (1 - 2 * frac);
+  const cueCx = edge + (right ? R : -R);
+  const markX = right ? ((cx - R) + edge) / 2 : (edge + (cx + R)) / 2;
+  const sideLabel = right ? "오른쪽 면" : "왼쪽 면";
+  const pad = 18;
+  const left = Math.min(cx, cueCx) - R - pad;
+  const rightEdge = Math.max(cx, cueCx) + R + pad;
+  return `
+    <svg class="hit-fig" viewBox="${left} 0 ${rightEdge - left} 312" role="img" aria-hidden="true" font-family="Malgun Gothic, Apple SD Gothic Neo, sans-serif">
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="#e53935" stroke="#ffb4a8" stroke-width="1.5"/>
+      ${lines}
+      <text x="${markX}" y="${cy + 6}" text-anchor="middle" fill="#fff8f6" font-size="20" font-weight="700">1</text>
+      <circle cx="${cueCx}" cy="${cy}" r="${R}" fill="#f7f4ee" stroke="#8ec5ff" stroke-width="2.5"/>
+      <text x="${cueCx}" y="${cy + 6}" text-anchor="middle" fill="#2a2824" font-size="20" font-weight="700">수</text>
+      <text x="${cx}" y="302" text-anchor="middle" fill="#b3aa98" font-size="14">${sideLabel}</text>
+    </svg>
+  `;
+}
+
 function renderReadout() {
   const cuePair = gap(state.cue, state.b1);
   const redPair = gap(state.b1, state.b2);
@@ -730,12 +805,18 @@ function renderReadout() {
     ["수구와 제2목적구", state.cue, state.b2]
   ].filter(([, a, b]) => Math.hypot(a.x - b.x, a.y - b.y) < 61.5 / 355);
 
+  const side = hitSide();
+  const frac = thicknessFrac(hit);
+  const sideName = side === "right" ? "오른쪽 면" : side === "left" ? "왼쪽 면" : "";
   readout.innerHTML = `
     <div class="sums">
       <div class="sum">
-        <span>${close ? "가까울 때" : "떨어져 있을 때"} · 두께</span>
-        <b${hit && hit.value.includes("보다") ? ' class="long"' : ""}>${hit ? hit.value : "—"}</b>
-        <small>${hit ? hit.note : ""}</small>
+        <div class="copy">
+          <span>${close ? "가까울 때" : "떨어져 있을 때"}${sideName ? " · " + sideName : ""} · 두께</span>
+          <b${hit && hit.value.includes("보다") ? ' class="long"' : ""}>${hit ? hit.value : "—"}</b>
+          <small>${hit ? hit.note : ""}</small>
+        </div>
+        ${thicknessFigure(frac, side)}
       </div>
     </div>
     ${overlap.length ? `<p class="warn">${overlap.map((x) => x[0]).join(", ")}이 겹칩니다. 공 지름은 61.5mm로 두었습니다.</p>` : ""}
@@ -790,7 +871,7 @@ svg.addEventListener("pointercancel", endDrag);
 
 window.addEventListener("keydown", (ev) => {
   if (ev.target.closest("input, textarea")) return;
-  const step = ev.shiftKey || state.snap ? 0.5 : 0.1;
+  const step = ev.shiftKey ? 0.5 : 0.1;
   const move = {
     ArrowLeft: [-step, 0],
     ArrowRight: [step, 0],
@@ -839,16 +920,6 @@ document.querySelectorAll('input[name="axis"]').forEach((el) => {
       render();
     }
   });
-});
-
-document.getElementById("snap").addEventListener("change", (ev) => {
-  state.snap = ev.target.checked;
-  if (state.snap) {
-    state.cue = place(state.cue);
-    state.b1 = place(state.b1);
-    state.b2 = place(state.b2);
-  }
-  render();
 });
 
 render();
